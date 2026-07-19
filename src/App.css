@@ -1,0 +1,106 @@
+.App {
+  min-height: 100vh;
+  background-color: #1B4FA8;
+}
+
+/* Fonts */
+.font-brand {
+  font-family: 'Poppins', system-ui, -apple-system, sans-serif;
+  font-weight: 300;
+  letter-spacing: 0.5px;
+}
+
+.font-body {
+  font-family: 'Open Sans', 'Helvetica Neue', Arial, sans-serif;
+}
+
+.font-heading {
+  font-family: 'Poppins', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 500;
+}
+
+/* Custom colors */
+.bg-dt-orange { background-color: #E15400; }
+.bg-dt-blue { background-color: #1B4FA8; }
+.bg-dt-blue-dark { background-color: #133C82; }
+.text-dt-coral { color: #E85C5C; }
+.text-dt-orange { color: #E15400; }
+.border-dt-blue { border-color: #1B4FA8; }
+
+/* Nav link */
+.nav-link {
+  position: relative;
+  color: #fff;
+  padding: 6px 4px;
+  transition: opacity 0.25s ease;
+}
+.nav-link:hover { opacity: 0.85; }
+.nav-link::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -4px;
+  height: 2px;
+  background: #ffffff;
+  transform: scaleX(0);
+  transform-origin: center;
+  transition: transform 0.3s ease;
+}
+.nav-link:hover::after,
+.nav-link.active::after { transform: scaleX(1); }
+
+/* Fade-up animation */
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(16px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.fade-up { animation: fadeUp 0.7s ease both; }
+.fade-up-delay-1 { animation: fadeUp 0.7s ease 0.1s both; }
+.fade-up-delay-2 { animation: fadeUp 0.7s ease 0.2s both; }
+
+/* Image card hover */
+.img-card {
+  overflow: hidden;
+  border-radius: 10px;
+  background: #ffffff;
+  transition: transform 0.35s ease, box-shadow 0.35s ease;
+  box-shadow: 0 6px 18px rgba(0,0,0,0.18);
+}
+.img-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 14px 28px rgba(0,0,0,0.28);
+}
+.img-card img {
+  transition: transform 0.6s ease;
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.img-card:hover img { transform: scale(1.05); }
+
+/* WhatsApp float */
+.whatsapp-float {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  width: 58px;
+  height: 58px;
+  border-radius: 999px;
+  background-color: #25D366;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 8px 22px rgba(0,0,0,0.35);
+  z-index: 50;
+  transition: transform 0.25s ease, box-shadow 0.25s ease;
+}
+.whatsapp-float:hover {
+  transform: scale(1.06);
+  box-shadow: 0 12px 28px rgba(0,0,0,0.45);
+}
+
+/* Prevent horizontal scroll */
+html, body, #root { overflow-x: hidden; }
