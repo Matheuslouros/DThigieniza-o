@@ -187,6 +187,7 @@ const Layout = () => {
             reservados.
           </span>
           <span>Cuidando dos seus estofados com excelência.</span>
+          <span>Desenvolvido por Matheus Louros soluções de web</span>
         </div>
       </footer>
 
