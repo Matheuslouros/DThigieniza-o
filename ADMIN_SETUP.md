@@ -10,7 +10,7 @@
 ## Como ativar (necessário antes de entrar em produção)
 1. Crie um projeto em https://supabase.com/dashboard.
 2. Abra **SQL Editor**, cole e execute `supabase/setup.sql` uma única vez num projeto novo.
-3. No Supabase, abra **Authentication > Users** e crie/convidE o e-mail do dono. Defina uma senha forte. Desative cadastro público em Authentication > Providers / Email, caso não precise de novas contas.
+3. No Supabase, abra **Authentication > Users** e crie ou convide o e-mail do dono. Defina uma senha forte. Desative cadastro público em Authentication > Providers / Email, caso não precise de novas contas.
 4. No SQL Editor execute, trocando pelo e-mail verdadeiro do dono:
    ```sql
    insert into public.site_admins(user_id)

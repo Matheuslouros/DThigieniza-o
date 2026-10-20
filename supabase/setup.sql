@@ -4,6 +4,8 @@ create table if not exists public.site_admins (
   user_id uuid primary key references auth.users(id) on delete cascade
 );
 alter table public.site_admins enable row level security;
+revoke all on public.site_admins from anon, authenticated;
+grant select on public.site_admins to authenticated;
 
 create policy "Admin consulta a propria autorizacao"
   on public.site_admins for select to authenticated
@@ -34,9 +36,9 @@ create table if not exists public.site_media (
 );
 create index if not exists site_media_created_at_idx on public.site_media(created_at desc);
 alter table public.site_media enable row level security;
+revoke all on public.site_media from anon, authenticated;
 grant select on public.site_media to anon, authenticated;
 grant insert, update, delete on public.site_media to authenticated;
-grant select on public.site_admins to authenticated;
 
 create policy "Qualquer visitante le publicados"
   on public.site_media for select to anon, authenticated using (published = true);
