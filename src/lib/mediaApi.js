@@ -56,6 +56,101 @@ function saveSession(data) {
   return session;
 }
 
+
+// Cadastro não fornece acesso de administrador automaticamente.
+// A autorização inicial é feita na tabela site_admins por quem configura o site.
+const adminReturnUrl = () => window.location.origin + "/admin";
+
+export async function registerAdminAccount(email, password) {
+  return request("/auth/v1/signup?redirect_to=" + encodeURIComponent(adminReturnUrl()), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim(), password })
+  });
+}
+
+export async function sendPasswordRecovery(email) {
+  await request("/auth/v1/recover?redirect_to=" + encodeURIComponent(adminReturnUrl()), {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: email.trim() })
+  });
+}
+
+// Supabase devolve o token de recuperação no fragmento (#) da URL.
+// Também aceita callback token_hash, caso o modelo de e-mail use OTP.
+export async function consumeAdminAuthRedirect() {
+  const hash = new URLSearchParams(window.location.hash.replace(/^#/, ""));
+  const query = new URLSearchParams(window.location.search);
+  const hasCallback = hash.has("access_token") || hash.has("error") ||
+    hash.has("error_description") || query.has("token_hash");
+  if (!hasCallback) return null;
+  const type = hash.get("type") || query.get("type");
+  try {
+    if (hash.get("error") || hash.get("error_description")) {
+      throw new Error(hash.get("error_description") || "Link inválido ou expirado.");
+    }
+    if (type === "recovery") {
+      let session;
+      if (hash.get("access_token") && hash.get("refresh_token")) {
+        session = {
+          access_token: hash.get("access_token"),
+          refresh_token: hash.get("refresh_token"),
+          expires_in: Number(hash.get("expires_in")) || 3600
+        };
+      } else if (query.get("token_hash")) {
+        session = await request("/auth/v1/verify", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ token_hash: query.get("token_hash"), type: "recovery" })
+        });
+      } else {
+        throw new Error("Link inválido. Solicite outro e-mail de recuperação.");
+      }
+      saveSession(session);
+      return "recovery";
+    }
+    if (type === "signup" || type === "email" || type === "invite") {
+      return "confirmed";
+    }
+    return null;
+  } finally {
+    query.delete("token_hash");
+    query.delete("type");
+    const search = query.toString();
+    window.history.replaceState(null, "", window.location.pathname + (search ? "?" + search : ""));
+  }
+}
+
+export async function updateAdminPassword(currentPassword, newPassword) {
+  const token = await adminToken();
+  const profile = await request("/auth/v1/user", { token });
+  if (!profile?.email) throw new Error("Não foi possível verificar o e-mail.");
+  // Verificação adicional: a senha atual também precisa estar correta.
+  await request("/auth/v1/token?grant_type=password", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ email: profile.email, password: currentPassword })
+  });
+  await request("/auth/v1/user", {
+    method: "PUT", token,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: newPassword })
+  });
+  await logoutAdmin();
+}
+
+export async function finishPasswordRecovery(newPassword) {
+  const token = await validToken();
+  if (!token) throw new Error("Link expirado. Peça outra recuperação de senha.");
+  await request("/auth/v1/user", {
+    method: "PUT", token,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ password: newPassword })
+  });
+  await logoutAdmin();
+}
+
 export function clearMediaSession() {
   localStorage.removeItem(sessionKey);
 }
