@@ -1,18 +1,27 @@
 import React, { useEffect, useState } from "react";
-import { ImagePlus, LogOut, Trash2, Video, ShieldCheck } from "lucide-react";
+import { ImagePlus, LogOut, Trash2, Video, ShieldCheck, KeyRound, Mail, UserPlus } from "lucide-react";
 import {
   isMediaConfigured, MAX_UPLOAD_BYTES, clearMediaSession,
   restoreAdminSession, signInAdmin, logoutAdmin,
+  registerAdminAccount, sendPasswordRecovery, consumeAdminAuthRedirect,
+  updateAdminPassword, finishPasswordRecovery,
   getAdminMedia, uploadMedia, deleteMedia
 } from "../lib/mediaApi";
 
 const categories = ["Sofás", "Cadeiras", "Colchões", "Tapetes", "Automotivos", "Outros"];
 const inputStyle = "w-full rounded-lg border border-white/20 bg-white/10 text-white px-4 py-3 outline-none focus:border-orange-400";
+const PASSWORD_MIN = 10;
+const linkStyle = "text-orange-200 hover:text-white underline text-sm";
 const buttonStyle = "rounded-lg bg-[#E15400] hover:bg-[#c94a00] disabled:opacity-60 disabled:cursor-not-allowed px-5 py-3 font-semibold text-white";
 
 export default function Admin() {
   const [loading, setLoading] = useState(true);
   const [authenticated, setAuthenticated] = useState(false);
+  const [view, setView] = useState("login");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [showAccount, setShowAccount] = useState(false);
   const [loginEmail, setLoginEmail] = useState("");
   const [password, setPassword] = useState("");
   const [file, setFile] = useState(null);
@@ -25,17 +34,52 @@ export default function Admin() {
 
   useEffect(() => {
     let active = true;
-    restoreAdminSession().then(async (allowed) => {
-      if (!active) return;
-      setAuthenticated(allowed);
-      if (allowed) {
-        try { const list = await getAdminMedia(); if (active) setItems(list); }
-        catch (err) { if (active) setError(err.message); }
+    async function start() {
+      try {
+        if (!isMediaConfigured) return;
+        const callback = await consumeAdminAuthRedirect();
+        if (!active) return;
+        if (callback === "recovery") {
+          setView("recovery");
+          return;
+        }
+        if (callback === "confirmed") {
+          clearMediaSession();
+          setNotice("E-mail confirmado! Entre com sua senha depois da autorização inicial do responsável pelo site.");
+          return;
+        }
+        const allowed = await restoreAdminSession();
+        if (!active) return;
+        setAuthenticated(allowed);
+        if (allowed) {
+          const list = await getAdminMedia();
+          if (active) setItems(list);
+        }
+      } catch (err) {
+        if (active) setError(err.message || "Falha ao verificar o acesso.");
+      } finally {
+        if (active) setLoading(false);
       }
-    }).catch(() => { if (active) clearMediaSession(); })
-      .finally(() => { if (active) setLoading(false); });
+    }
+    start();
     return () => { active = false; };
   }, []);
+
+  function navigate(nextView) {
+    setView(nextView);
+    setPassword("");
+    setConfirmPassword("");
+    setNewPassword("");
+    setCurrentPassword("");
+    setError("");
+    setNotice("");
+  }
+
+  function validatePassword(next, confirmation) {
+    if (next.length < PASSWORD_MIN) throw new Error("A senha precisa ter pelo menos 10 caracteres.");
+    if (next !== confirmation) throw new Error("As senhas informadas não são iguais.");
+  }
+
 
   async function login(event) {
     event.preventDefault();
@@ -46,6 +90,61 @@ export default function Admin() {
       setItems(list);
       setAuthenticated(true);
       setPassword("");
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  }
+
+
+  async function register(event) {
+    event.preventDefault();
+    setBusy(true); setError(""); setNotice("");
+    try {
+      validatePassword(password, confirmPassword);
+      await registerAdminAccount(loginEmail, password);
+      setPassword(""); setConfirmPassword("");
+      setView("login");
+      setNotice("Confira seu e-mail e confirme o cadastro. A primeira conta precisa ser liberada uma vez pelo responsável do site.");
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  }
+
+  async function forgot(event) {
+    event.preventDefault();
+    setBusy(true); setError(""); setNotice("");
+    try {
+      await sendPasswordRecovery(loginEmail);
+      setView("login");
+      setNotice("Se o e-mail existir, você receberá um link para alterar a senha. Confira também a pasta de spam.");
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  }
+
+  async function recover(event) {
+    event.preventDefault();
+    setBusy(true); setError(""); setNotice("");
+    try {
+      validatePassword(newPassword, confirmPassword);
+      await finishPasswordRecovery(newPassword);
+      setView("login");
+      setNewPassword(""); setConfirmPassword("");
+      setNotice("Senha atualizada! Entre novamente com a nova senha.");
+    } catch (err) { setError(err.message); }
+    finally { setBusy(false); }
+  }
+
+  async function changePassword(event) {
+    event.preventDefault();
+    setBusy(true); setError(""); setNotice("");
+    try {
+      validatePassword(newPassword, confirmPassword);
+      if (!currentPassword) throw new Error("Informe a sua senha atual.");
+      await updateAdminPassword(currentPassword, newPassword);
+      setAuthenticated(false);
+      setShowAccount(false);
+      setItems([]);
+      setCurrentPassword(""); setNewPassword(""); setConfirmPassword("");
+      setView("login");
+      setNotice("Senha alterada! Faça login novamente usando a senha nova.");
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
   }
@@ -81,7 +180,7 @@ export default function Admin() {
   async function logout() {
     setBusy(true);
     await logoutAdmin();
-    setAuthenticated(false); setItems([]); setBusy(false);
+    setAuthenticated(false); setItems([]); setShowAccount(false); setBusy(false);
   }
 
   return (
@@ -94,12 +193,19 @@ export default function Admin() {
             <p className="text-white/70 mt-2">Gerencie fotos e vídeos dos trabalhos realizados.</p>
           </div>
           {authenticated && (
-            <button disabled={busy} onClick={logout} className="inline-flex gap-2 items-center rounded-lg border border-white/30 px-4 py-2 hover:bg-white/10">
-              <LogOut size={17} /> Sair
-            </button>
+            <div className="flex flex-wrap gap-3">
+              <button disabled={busy} onClick={() => { setShowAccount(value => !value); setError(""); setNotice(""); }} className="inline-flex gap-2 items-center rounded-lg border border-white/30 px-4 py-2 hover:bg-white/10">
+                <KeyRound size={17} /> Alterar senha
+              </button>
+              <button disabled={busy} onClick={logout} className="inline-flex gap-2 items-center rounded-lg border border-white/30 px-4 py-2 hover:bg-white/10">
+                <LogOut size={17} /> Sair
+              </button>
+            </div>
           )}
         </header>
 
+        {notice && <p className="mb-5 rounded-lg bg-green-800/50 border border-green-500/50 p-4" role="status">{notice}</p>}
+        {error && <p className="mb-5 rounded-lg bg-red-900/50 border border-red-400/50 p-4" role="alert">{error}</p>}
         {!isMediaConfigured ? (
           <div className="rounded-xl bg-white/10 border border-white/20 p-6">
             O painel ainda não foi ativado. Configure as variáveis de ambiente e o banco de dados conforme o arquivo ADMIN_SETUP.md do projeto.
@@ -108,19 +214,75 @@ export default function Admin() {
           <p role="status">Verificando seu acesso...</p>
         ) : !authenticated ? (
           <section className="max-w-md rounded-2xl bg-white/10 border border-white/20 p-7">
-            <div className="flex items-center gap-2 text-orange-200 mb-5"><ShieldCheck size={23} /> <strong>Entrar como administrador</strong></div>
-            <form onSubmit={login} className="space-y-4">
-              <label className="block text-sm">E-mail
-                <input autoComplete="username" type="email" required value={loginEmail} onChange={event => setLoginEmail(event.target.value)} className={`mt-2 ${inputStyle}`} />
-              </label>
-              <label className="block text-sm">Senha
-                <input autoComplete="current-password" type="password" required value={password} onChange={event => setPassword(event.target.value)} className={`mt-2 ${inputStyle}`} />
-              </label>
-              <button className={`w-full ${buttonStyle}`} disabled={busy} type="submit">{busy ? "Entrando..." : "Entrar"}</button>
-            </form>
+            <div className="flex items-center gap-2 text-orange-200 mb-5">
+              {view === "register" ? <UserPlus size={23} /> : view === "forgot" ? <Mail size={23} /> : <ShieldCheck size={23} />}
+              <h2 className="font-semibold text-xl">
+                {view === "register" ? "Criar minha conta" : view === "forgot" ? "Recuperar acesso" : view === "recovery" ? "Definir nova senha" : "Entrar como administrador"}
+              </h2>
+            </div>
+            {view === "recovery" ? (
+              <form onSubmit={recover} className="space-y-4">
+                <p className="text-white/75 text-sm">Escolha uma nova senha para sua conta.</p>
+                <label className="block text-sm">Nova senha
+                  <input type="password" autoComplete="new-password" required minLength={PASSWORD_MIN} value={newPassword} onChange={event => setNewPassword(event.target.value)} className={inputStyle + " mt-2"} />
+                </label>
+                <label className="block text-sm">Confirmar nova senha
+                  <input type="password" autoComplete="new-password" required minLength={PASSWORD_MIN} value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className={inputStyle + " mt-2"} />
+                </label>
+                <button type="submit" disabled={busy} className={"w-full " + buttonStyle}>{busy ? "Salvando..." : "Salvar nova senha"}</button>
+                <button type="button" onClick={() => navigate("login")} className={linkStyle}>Voltar para entrar</button>
+              </form>
+            ) : (
+              <form onSubmit={view === "register" ? register : view === "forgot" ? forgot : login} className="space-y-4">
+                <label className="block text-sm">E-mail
+                  <input type="email" autoComplete="username" required value={loginEmail} onChange={event => setLoginEmail(event.target.value)} className={inputStyle + " mt-2"} />
+                </label>
+                {view !== "forgot" && (
+                  <label className="block text-sm">Senha
+                    <input type="password" autoComplete={view === "register" ? "new-password" : "current-password"} required minLength={view === "register" ? PASSWORD_MIN : undefined} value={password} onChange={event => setPassword(event.target.value)} className={inputStyle + " mt-2"} />
+                  </label>
+                )}
+                {view === "register" && (
+                  <>
+                    <label className="block text-sm">Confirmar senha
+                      <input type="password" autoComplete="new-password" required minLength={PASSWORD_MIN} value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className={inputStyle + " mt-2"} />
+                    </label>
+                    <p className="text-white/70 text-sm">Use pelo menos 10 caracteres. Depois de confirmar o e-mail, sua conta será autorizada pelo responsável.</p>
+                  </>
+                )}
+                <button type="submit" disabled={busy} className={"w-full " + buttonStyle}>
+                  {busy ? "Aguarde..." : view === "register" ? "Cadastrar" : view === "forgot" ? "Enviar link de recuperação" : "Entrar"}
+                </button>
+                <div className="flex flex-wrap gap-x-4 gap-y-2">
+                  <button type="button" onClick={() => navigate(view === "login" ? "register" : "login")} className={linkStyle}>
+                    {view === "login" ? "Criar conta" : "Voltar para entrar"}
+                  </button>
+                  {view !== "forgot" && (
+                    <button type="button" onClick={() => navigate("forgot")} className={linkStyle}>Esqueci minha senha</button>
+                  )}
+                </div>
+              </form>
+            )}
           </section>
         ) : (
           <>
+            {showAccount && (
+              <section className="max-w-xl rounded-2xl bg-white/10 border border-white/20 p-5 sm:p-7 mb-9">
+                <h2 className="font-heading text-2xl mb-4">Segurança da conta</h2>
+                <form onSubmit={changePassword} className="space-y-4">
+                  <label className="block text-sm">Senha atual
+                    <input type="password" autoComplete="current-password" required value={currentPassword} onChange={event => setCurrentPassword(event.target.value)} className={inputStyle + " mt-2"} />
+                  </label>
+                  <label className="block text-sm">Nova senha
+                    <input type="password" autoComplete="new-password" required minLength={PASSWORD_MIN} value={newPassword} onChange={event => setNewPassword(event.target.value)} className={inputStyle + " mt-2"} />
+                  </label>
+                  <label className="block text-sm">Confirmar nova senha
+                    <input type="password" autoComplete="new-password" required minLength={PASSWORD_MIN} value={confirmPassword} onChange={event => setConfirmPassword(event.target.value)} className={inputStyle + " mt-2"} />
+                  </label>
+                  <button type="submit" disabled={busy} className={buttonStyle}>{busy ? "Salvando..." : "Alterar senha"}</button>
+                </form>
+              </section>
+            )}
             <section className="rounded-2xl bg-white/10 border border-white/20 p-5 sm:p-7 mb-9">
               <div className="flex items-center gap-2 mb-5"><ImagePlus size={22} className="text-orange-200" /><h2 className="text-2xl font-heading">Nova publicação</h2></div>
               <form onSubmit={publish} className="grid grid-cols-1 md:grid-cols-2 gap-5">
@@ -170,8 +332,6 @@ export default function Admin() {
             </section>
           </>
         )}
-        {notice && <p className="mt-6 rounded-lg bg-green-800/50 border border-green-500/50 p-4" role="status">{notice}</p>}
-        {error && <p className="mt-6 rounded-lg bg-red-900/50 border border-red-400/50 p-4" role="alert">{error}</p>}
         <a href="/" className="inline-block mt-10 text-orange-200 hover:text-white underline">Voltar ao site</a>
       </div>
     </main>
