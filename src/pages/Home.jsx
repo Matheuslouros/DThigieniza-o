@@ -9,6 +9,8 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
+import MediaGrid from "../components/MediaGrid";
+import usePublishedMedia from "../hooks/usePublishedMedia";
 import { CheckCircle2, ArrowRight, Sparkles } from "lucide-react";
 import {
   heroImages,
@@ -19,6 +21,7 @@ import {
 } from "../mock";
 
 const Home = () => {
+  const { media: recentMedia } = usePublishedMedia();
   return (
     <div>
       {/* Seção 1: 3 cards de imagens no topo (destaque) */}
@@ -132,6 +135,21 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      {/* Novos trabalhos publicados pelo dono no painel /admin. */}
+      {recentMedia.length > 0 && (
+        <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-14">
+          <h2 className="text-dt-coral text-3xl sm:text-4xl font-heading text-center mb-8">
+            Trabalhos recentes
+          </h2>
+          <MediaGrid items={recentMedia.slice(0, 8)} />
+          <div className="mt-8 text-center">
+            <Link to="/depoimentos" className="inline-flex items-center gap-2 bg-white text-[#1B4FA8] hover:bg-[#E85C5C] hover:text-white transition-colors px-5 py-2.5 rounded-md font-semibold">
+              Ver todos os trabalhos <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+        </section>
+      )}
 
       {/* Seção 4: Galeria parcial de depoimentos (12 primeiras imagens) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">

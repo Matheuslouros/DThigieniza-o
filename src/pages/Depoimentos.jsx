@@ -6,8 +6,11 @@
 
 import React from "react";
 import { testimonialsGallery } from "../mock";
+import MediaGrid from "../components/MediaGrid";
+import usePublishedMedia from "../hooks/usePublishedMedia";
 
 const Depoimentos = () => {
+  const { media } = usePublishedMedia();
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-14">
       {/* Cabeçalho da página com título e texto de introdução */}
@@ -22,6 +25,13 @@ const Depoimentos = () => {
           eficiência.
         </p>
       </div>
+
+      {media.length > 0 && (
+        <section className="mt-10" aria-label="Novos trabalhos realizados">
+          <h2 className="text-dt-coral text-2xl sm:text-3xl font-heading mb-6">Nossos trabalhos recentes</h2>
+          <MediaGrid items={media} />
+        </section>
+      )}
 
       {/* Grade responsível com todas as imagens dos trabalhos */}
       <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">

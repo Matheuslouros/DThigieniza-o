@@ -53,12 +53,13 @@ export default function Admin() {
   async function publish(event) {
     event.preventDefault();
     if (!file) { setError("Selecione uma foto ou vídeo."); return; }
+    const formElement = event.currentTarget;
     setBusy(true); setError(""); setNotice("");
     try {
       await uploadMedia(file, { title, category });
       setItems(await getAdminMedia());
       setFile(null); setTitle("");
-      if (event.currentTarget) event.currentTarget.reset();
+      if (formElement) formElement.reset();
       setNotice("Trabalho publicado no site com sucesso!");
     } catch (err) { setError(err.message); }
     finally { setBusy(false); }
