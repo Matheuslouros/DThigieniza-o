@@ -9,6 +9,7 @@
 
 import React from "react";
 import { Link } from "react-router-dom";
+import MediaGallery from "../components/MediaGallery";
 import { CheckCircle2, ArrowRight, Sparkles } from "lucide-react";
 import {
   heroImages,
@@ -132,6 +133,8 @@ const Home = () => {
           </div>
         </div>
       </section>
+
+      <MediaGallery limit={6} />
 
       {/* Seção 4: Galeria parcial de depoimentos (12 primeiras imagens) */}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-16">

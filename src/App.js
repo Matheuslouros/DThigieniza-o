@@ -13,6 +13,7 @@ import Sobre from "./pages/Sobre";
 import Servicos from "./pages/Servicos";
 import Depoimentos from "./pages/Depoimentos";
 import Contato from "./pages/Contato";
+import Admin from "./pages/Admin";
 import { Toaster } from "./components/ui/toaster";
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
     <div className="App">
       <BrowserRouter>
         <Routes>
+          <Route path="/admin" element={<Admin />} />
           {/* Todas as páginas usam o mesmo Layout (cabeçalho e rodapé) */}
           <Route path="/" element={<Layout />}>
             {/* Página inicial (Início) */}

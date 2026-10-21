@@ -6,6 +6,7 @@
 
 import React from "react";
 import { testimonialsGallery } from "../mock";
+import MediaGallery from "../components/MediaGallery";
 
 const Depoimentos = () => {
   return (
@@ -22,6 +23,8 @@ const Depoimentos = () => {
           eficiência.
         </p>
       </div>
+
+      <MediaGallery compact />
 
       {/* Grade responsível com todas as imagens dos trabalhos */}
       <div className="mt-10 grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4">
